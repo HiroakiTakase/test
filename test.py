@@ -13,17 +13,14 @@ openai.api_base = "https://slackchatbot.openai.azure.com/"
 response = openai.ChatCompletion.create(
     deployment_id="slack_bot",  # デプロイメントの指定
     messages=[  # 会話内容のリスト
-        {
-            "role": "system",
-            "content": "具志堅用高について教えて"
-        }
+        {"role": "system", "content": "具志堅用高について教えて"}
     ],
     temperature=0.7,  # クリエイティビティレベル
     max_tokens=800,  # 返信文の最大文字数
     top_p=0.95,  # 上位トークンの確率
     frequency_penalty=0,  # 頻度ペナルティ
     presence_penalty=0,  # 存在ペナルティ
-    stop=None  # 停止条件
+    stop=None,  # 停止条件
 )
 # レスポンスの表示
 print(response)

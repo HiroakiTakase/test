@@ -3,11 +3,13 @@ import os
 import json
 from datetime import date, datetime
 
+
 # デフォルトではData型をJson化できないため、文字列に変換する
 def json_serial(obj):
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
-    raise TypeError ("Type %s not serializable" % type(obj))
+    raise TypeError("Type %s not serializable" % type(obj))
+
 
 def lambda_handler(event, context):
     if "image_name" not in event.keys():
@@ -22,13 +24,18 @@ def lambda_handler(event, context):
     tag_usage = event["tag_usage"].lower()
     name_prefix = ("operation/", "official/", "custom/")
     if not image_name.startswith(name_prefix):
-        raise ValueError("The value of `image_name` is invalid. It should start with one of {}".format(name_prefix))
+        raise ValueError(
+            "The value of `image_name` is invalid. It should start with one of {}".format(
+                name_prefix
+            )
+        )
     tags = ["common", "la"]
     if not tag_team in tags:
-        raise ValueError("The value of `tag_team` is invalid. It should be one of {}.".format(tags))
+        raise ValueError(
+            "The value of `tag_team` is invalid. It should be one of {}.".format(tags)
+        )
 
-    ecr = boto3.client(service_name="ecr",
-                       endpoint_url=os.environ['ECR_ENDPOINT'])
+    ecr = boto3.client(service_name="ecr", endpoint_url=os.environ["ECR_ENDPOINT"])
 
     repo_response = ecr.create_repository(
         repositoryName=image_name,
@@ -40,7 +47,7 @@ def lambda_handler(event, context):
     )
 
     def get_policy():
-      policy_tempalte = '''
+        policy_tempalte = """
       {
         "Version": "2008-10-17",
         "Statement": [
@@ -87,13 +94,11 @@ def lambda_handler(event, context):
           }
         ]
       }
-      '''
-      return policy_tempalte.replace('{account_id}', os.environ['ACCOUNT_ID'])
+      """
+        return policy_tempalte.replace("{account_id}", os.environ["ACCOUNT_ID"])
 
     policy_response = ecr.set_repository_policy(
-      repositoryName=image_name,
-      policyText=get_policy(),
-      force=True
+        repositoryName=image_name, policyText=get_policy(), force=True
     )
-    
-    return  json.dumps(repo_response, default=json_serial)
+
+    return json.dumps(repo_response, default=json_serial)

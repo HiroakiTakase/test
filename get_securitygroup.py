@@ -10,12 +10,18 @@ import util.sort_functions as sort_functions
 import util.common_functions as common_functions
 import util.constants as constants
 
-KEY_SECURITY_GROUPS = 'SecurityGroups'
-KEY_GROUP_NAME = 'GroupName'
-DIR_NAME_SECURITYGROUP = 'securitygroup'
-GROUP_NAME_DAFAULT = ['default', 'ElasticMapReduce-master', 'ElasticMapReduce-Master-Private', 
-                      'ElasticMapReduce-ServiceAccess', 'ElasticMapReduce-slave', 'ElasticMapReduce-Slave-Private']
-KEYS_TO_REMOVE = ['PeeringStatus', 'VpcId', 'VpcPeeringConnectionId']
+KEY_SECURITY_GROUPS = "SecurityGroups"
+KEY_GROUP_NAME = "GroupName"
+DIR_NAME_SECURITYGROUP = "securitygroup"
+GROUP_NAME_DAFAULT = [
+    "default",
+    "ElasticMapReduce-master",
+    "ElasticMapReduce-Master-Private",
+    "ElasticMapReduce-ServiceAccess",
+    "ElasticMapReduce-slave",
+    "ElasticMapReduce-Slave-Private",
+]
+KEYS_TO_REMOVE = ["PeeringStatus", "VpcId", "VpcPeeringConnectionId"]
 
 
 def split_sgrules(rules):
@@ -44,10 +50,27 @@ def format_securitygroup(sg_dict):
         "IpPermissionsEgress": "OutboundRules",
     }
     # 項目の配置順を定義
-    orderl1 = ["GroupName", "GroupId", "Description", "VpcId", "OwnerId",
-               "InboundRules", "OutboundRules", "Tags"]
-    orderl2 = ["FromPort", "ToPort", "IpProtocol", "CidrIp", "CidrIpv6",
-               "PrefixListId", "GroupId", "UserId", "Description"]
+    orderl1 = [
+        "GroupName",
+        "GroupId",
+        "Description",
+        "VpcId",
+        "OwnerId",
+        "InboundRules",
+        "OutboundRules",
+        "Tags",
+    ]
+    orderl2 = [
+        "FromPort",
+        "ToPort",
+        "IpProtocol",
+        "CidrIp",
+        "CidrIpv6",
+        "PrefixListId",
+        "GroupId",
+        "UserId",
+        "Description",
+    ]
 
     # キー名の置換
     sg_dict = {rename_map.get(key, key): sg_dict[key] for key in sg_dict.keys()}
@@ -72,7 +95,10 @@ def format_securitygroup(sg_dict):
                     elif key in ["FromPort", "ToPort"] and isinstance(item[key], int):
                         item[key] = str(item[key])
 
-            sorted_dict[rule] = [dict(sorted(item.items(), key=lambda x: orderl2.index(x[0]))) for item in sorted_dict[rule]]
+            sorted_dict[rule] = [
+                dict(sorted(item.items(), key=lambda x: orderl2.index(x[0])))
+                for item in sorted_dict[rule]
+            ]
 
     return sorted_dict
 
@@ -81,13 +107,17 @@ def save_security_group(group_name, data, origin_profile, env):
     """
     セキュリティグループポリシーをファイル出力する関数
     """
-    dir_path = './{0}/{1}/{2}/'.format(env, origin_profile, DIR_NAME_SECURITYGROUP)
+    dir_path = "./{0}/{1}/{2}/".format(env, origin_profile, DIR_NAME_SECURITYGROUP)
     os.makedirs(dir_path, exist_ok=True)
-    filename = './{0}/{1}/{2}/{3}.json'.format(env, origin_profile, DIR_NAME_SECURITYGROUP, group_name)
-    print('{}'.format(group_name))
+    filename = "./{0}/{1}/{2}/{3}.json".format(
+        env, origin_profile, DIR_NAME_SECURITYGROUP, group_name
+    )
+    print("{}".format(group_name))
 
     # ソート用キーを追加
-    data = sort_functions.add_key(data, constants.SORT_INFO_IN_SGRULE, constants.MERGED_KEY)
+    data = sort_functions.add_key(
+        data, constants.SORT_INFO_IN_SGRULE, constants.MERGED_KEY
+    )
     # キーリストに基づいてソート
     data = sort_functions.sort_dict_in_list(data, constants.MERGED_KEY)
     # ソート用キーの削除
@@ -96,24 +126,24 @@ def save_security_group(group_name, data, origin_profile, env):
     # Tags内をソート
     data = sort_functions.sort_dict_in_list(data, "Key")
 
-    with open(filename, 'w', encoding=constants.CHARACODE_UTF8) as f:
+    with open(filename, "w", encoding=constants.CHARACODE_UTF8) as f:
         json.dump(data, f, indent=4)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = sys.argv
     origin_profile_names = common_functions.get_origin_profile_names(args)
 
     # コマンド引数の正常性を判定
     common_functions.validate_command_arg(args, origin_profile_names)
 
-    sgid_path = './list/{0}_vpcid.txt'.format(args[1])
+    sgid_path = "./list/{0}_vpcid.txt".format(args[1])
 
     # VPCマッピングファイルを読み込み、処理に合わせた形で辞書に代入
     vpc_id_mapping = {}
-    with open(sgid_path, 'r', encoding=constants.CHARACODE_UTF8) as securityid_file:
+    with open(sgid_path, "r", encoding=constants.CHARACODE_UTF8) as securityid_file:
         for line in securityid_file:
-            values = line.strip().split(',')
+            values = line.strip().split(",")
             key = values[1]
             value = values[0]
             vpc_id_mapping[key] = value
@@ -134,7 +164,9 @@ if __name__ == '__main__':
                 # セキュリティグループの名前がデフォルト値の場合、VPC名を先頭に付与する
                 if security_group[KEY_GROUP_NAME] in GROUP_NAME_DAFAULT:
                     vpc_name = vpc_id_mapping[security_group["VpcId"]]
-                    group_name = '{0}-{1}'.format(vpc_name, security_group[KEY_GROUP_NAME])
+                    group_name = "{0}-{1}".format(
+                        vpc_name, security_group[KEY_GROUP_NAME]
+                    )
 
                 # GUIに表示されないルール内の情報を削除
                 for ip_permission in security_group.get("IpPermissions", []):

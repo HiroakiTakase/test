@@ -15,19 +15,21 @@ def save_bucket_policy(bucket_name, session, origin_profile, env):
     try:
         print(bucket_name)
 
-        dir_path = './{0}/{1}/bucketpolicy/'.format(env, origin_profile)
+        dir_path = "./{0}/{1}/bucketpolicy/".format(env, origin_profile)
         os.makedirs(dir_path, exist_ok=True)
         client = session.client(constants.AWS_SERVICE_S3)
 
         response = client.get_bucket_policy(Bucket=bucket_name)
 
         # ファイル内容のソート
-        data = sort_functions.sort_policy(json.loads(response['Policy']))
+        data = sort_functions.sort_policy(json.loads(response["Policy"]))
         data = sort_functions.sort_item_in_dict(data)
         data = sort_functions.format_policy(data)
-        filename = './{0}/{1}/bucketpolicy/{2}.json'.format(env, origin_profile, bucket_name)
+        filename = "./{0}/{1}/bucketpolicy/{2}.json".format(
+            env, origin_profile, bucket_name
+        )
 
-        with open(filename, 'w', encoding=constants.CHARACODE_UTF8) as f:
+        with open(filename, "w", encoding=constants.CHARACODE_UTF8) as f:
             json.dump(data, f, indent=4)
 
     except botocore.exceptions.ClientError as error:
@@ -35,7 +37,7 @@ def save_bucket_policy(bucket_name, session, origin_profile, env):
         print(error)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = sys.argv
     origin_profile_names = common_functions.get_origin_profile_names(args)
 

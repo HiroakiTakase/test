@@ -31,7 +31,9 @@ def add_mention_to_messsage(client: str, message: str) -> str:
                 email = p_num_mail[0]
                 user_info = client.users_lookupByEmail(email=email)
 
-                if "user" in user_info:  # メールアドレスからSlackのユーザー情報が参照できればユーザーIDに変換
+                if (
+                    "user" in user_info
+                ):  # メールアドレスからSlackのユーザー情報が参照できればユーザーIDに変換
                     line_detail[0] = "<@" + user_info["user"]["id"] + ">"
                 else:  # 参照できなければそのままP番を使用
                     line_detail[0] = p_num_mail[1]

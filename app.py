@@ -14,10 +14,11 @@ openai.api_version = "2023-05-15"
 openai.api_key = os.environ["OPENAI_API_KEY"]
 openai.api_base = "https://slackchatbot.openai.azure.com/"
 
-#TODO
-#json読み込み
-with open('./test.json') as f:
+# TODO
+# json読み込み
+with open("./test.json") as f:
     test = json.load(f)
+
 
 # 会話履歴の作成関数
 def create_chat_history(response, thread_ts, system_message):
@@ -26,7 +27,10 @@ def create_chat_history(response, thread_ts, system_message):
     If app_id is present, it is assumed to be a response from ChatGPT,
     set "assistant" role. If not, set "user" role.
     """
-    content = {"role": "system", "content": system_message}  # 会話履歴の先頭につけるChatGPTの性格設定
+    content = {
+        "role": "system",
+        "content": system_message,
+    }  # 会話履歴の先頭につけるChatGPTの性格設定
     chat_history = {thread_ts: {"message": [content]}}  # 会話履歴の格納先
 
     for res in response.data["messages"]:
@@ -45,7 +49,9 @@ def create_chat_history(response, thread_ts, system_message):
 def chatgpt_reply(event, say):
     # 投稿に関する情報の取得
     input_message = event["text"]
-    input_message = input_message.replace("<@U03QQN7E74Y>", "")  # Chatbotへのメンションを削除して整理
+    input_message = input_message.replace(
+        "<@U03QQN7E74Y>", ""
+    )  # Chatbotへのメンションを削除して整理
     print("prompt: " + input_message)  # ログへ流す
 
     channel = event["channel"]
@@ -55,10 +61,10 @@ def chatgpt_reply(event, say):
     else:
         thread_ts = event["thread_ts"]  # 2回目以降
 
-    #TODO
+    # TODO
     # ChatGPTの性格設定
-    #system_message = "You are ChatGPT, a large language model trained by OpenAI. Answer as concisely as possible."
-    #system_message = "あなたは侍です。侍風に答えてください。"
+    # system_message = "You are ChatGPT, a large language model trained by OpenAI. Answer as concisely as possible."
+    # system_message = "あなたは侍です。侍風に答えてください。"
     system_message = test["template"]
     # 会話履歴の作成
     response = app.client.conversations_replies(channel=channel, ts=thread_ts)
@@ -67,7 +73,8 @@ def chatgpt_reply(event, say):
 
     # ChatGPTのリクエスト（会話型リクエスト）の作成
     response = openai.ChatCompletion.create(
-        deployment_id="slack_bot", messages=chat_history  # デプロイメントの指定
+        deployment_id="slack_bot",
+        messages=chat_history,  # デプロイメントの指定
     )
     text = response["choices"][0]["message"]["content"]  # ChatGPTの返答を取得
     print("ChatGPT: " + text)  # ログに表示

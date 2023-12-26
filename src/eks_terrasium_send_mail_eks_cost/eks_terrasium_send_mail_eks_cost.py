@@ -6,16 +6,21 @@ import re
 from datetime import datetime, timedelta, timezone
 from dateutil.relativedelta import relativedelta
 
-START_LINE = "******************************start******************************************" + "\n"
+START_LINE = (
+    "******************************start******************************************"
+    + "\n"
+)
 LINE = "\n" + "************************************************************************"
-END_LINE = "\n" + "******************************end******************************************"
+END_LINE = (
+    "\n" + "******************************end******************************************"
+)
 REGION = "ap-northeast-1"
 # ログ名のprefix
 LOG_STREAM_NAME_PREFIX = "fluentbit-kube.var.log.containers.cronjob-kubectl-cost-"
 # 1時間（単位：milliseconds）
 BATCH_EXECUTE_PERIOD = 3600000
 # snsのarn
-TOPIC_ARN = os.environ['TOPIC_ARN']
+TOPIC_ARN = os.environ["TOPIC_ARN"]
 
 
 # CostExplorerからのレスポンスを整形
@@ -24,16 +29,20 @@ def response_format(response_context: str, type="normal", report_type="week") ->
     memberlist_y_title = []
     title_week = ""
     # ヘッダー作成
-    for key in range(len(response_context['ResultsByTime'])):
+    for key in range(len(response_context["ResultsByTime"])):
         if type == "memberList":
             if key == 0 or report_type != "week":
-                title.append(response_context['ResultsByTime'][key]["TimePeriod"]["Start"])
-                title_week = (response_context['ResultsByTime'][key]["TimePeriod"]["Start"])
-        for val in response_context['ResultsByTime'][key]['Groups']:
+                title.append(
+                    response_context["ResultsByTime"][key]["TimePeriod"]["Start"]
+                )
+                title_week = response_context["ResultsByTime"][key]["TimePeriod"][
+                    "Start"
+                ]
+        for val in response_context["ResultsByTime"][key]["Groups"]:
             if type == "normal":
-                title.append(val['Keys'][0])
+                title.append(val["Keys"][0])
             else:
-                memberlist_y_title.append(val['Keys'][0][12:])  # P番大文字対応
+                memberlist_y_title.append(val["Keys"][0][12:])  # P番大文字対応
 
     if len(title) > 0:
         if type == "normal":
@@ -46,21 +55,27 @@ def response_format(response_context: str, type="normal", report_type="week") ->
 
     context = []
     context_tmp_member = {}
-    for key in range(len(response_context['ResultsByTime'])):
+    for key in range(len(response_context["ResultsByTime"])):
         context_tmp = {}
-        context_tmp["TimePeriod"] = response_context['ResultsByTime'][key]["TimePeriod"]["Start"]
-        for val in response_context['ResultsByTime'][key]['Groups']:
+        context_tmp["TimePeriod"] = response_context["ResultsByTime"][key][
+            "TimePeriod"
+        ]["Start"]
+        for val in response_context["ResultsByTime"][key]["Groups"]:
             if type == "normal":
-                context_tmp[val['Keys'][0]] = val['Metrics']['UnblendedCost']['Amount']
+                context_tmp[val["Keys"][0]] = val["Metrics"]["UnblendedCost"]["Amount"]
             else:
-                context_tmp[val['Keys'][0][12:]] = val['Metrics']['UnblendedCost']['Amount']  # P番大文字対応
+                context_tmp[val["Keys"][0][12:]] = val["Metrics"]["UnblendedCost"][
+                    "Amount"
+                ]  # P番大文字対応
             if report_type == "week":
-                if val['Keys'][0][12:] in context_tmp_member:
-                    context_tmp_member[val['Keys'][0][12:]] += \
-                        float(val['Metrics']['UnblendedCost']['Amount'])
+                if val["Keys"][0][12:] in context_tmp_member:
+                    context_tmp_member[val["Keys"][0][12:]] += float(
+                        val["Metrics"]["UnblendedCost"]["Amount"]
+                    )
                 else:
-                    context_tmp_member[val['Keys'][0][12:]] = \
-                        float(val['Metrics']['UnblendedCost']['Amount'])
+                    context_tmp_member[val["Keys"][0][12:]] = float(
+                        val["Metrics"]["UnblendedCost"]["Amount"]
+                    )
         context.append(context_tmp)
 
     # 月跨ぎの場合、週次にEMR料金（CA/MA/MS/DDUチーム）-P番別料金を１列にする
@@ -107,25 +122,25 @@ def response_format(response_context: str, type="normal", report_type="week") ->
             output_list.append(",".join(str(n) for n in output_list_per))
     return {"title": title, "output_list": output_list}
 
+
 # p番またはs番を大文字にする 例)p1111 → P1111
 def convert_to_upper_case(word: str) -> str:
-    if word[0] in 'ps' and word[1:].isdigit():
+    if word[0] in "ps" and word[1:].isdigit():
         return word[0].upper() + word[1:]
     else:
         return word
+
 
 # メール送信
 def send_mail(subject: str, message: str) -> None:
     sns = boto3.resource("sns", region_name=REGION)
 
-    sns.Topic(TOPIC_ARN).publish(
-        Message=str(message) + END_LINE,
-        Subject=subject
-    )
+    sns.Topic(TOPIC_ARN).publish(Message=str(message) + END_LINE, Subject=subject)
+
 
 def lambda_handler(event, context):
     # EventBridgeから渡される変数で週次(week)と月次(month)を分岐
-    if "type" in event and event['type'] == "month":
+    if "type" in event and event["type"] == "month":
         report_type = "month"
     else:
         report_type = "week"
@@ -140,143 +155,138 @@ def lambda_handler(event, context):
         last_monday = cur_time - timedelta(days=weekday + 7)
         # メールのサブジェクト用のendtime
         report_end_day = cur_time - timedelta(days=weekday + 1)
-        report_end = str(report_end_day.year) + "-" + str(report_end_day.strftime('%m')) + "-" \
-            + str(report_end_day.strftime('%d'))
-        end = str(cur_monday.year) + "-" + str(cur_monday.strftime('%m')) + "-" \
-            + str(cur_monday.strftime('%d'))
-        start_member = start = str(last_monday.year) + "-" + str(last_monday.strftime('%m')) + "-" \
-            + str(last_monday.strftime('%d'))
+        report_end = (
+            str(report_end_day.year)
+            + "-"
+            + str(report_end_day.strftime("%m"))
+            + "-"
+            + str(report_end_day.strftime("%d"))
+        )
+        end = (
+            str(cur_monday.year)
+            + "-"
+            + str(cur_monday.strftime("%m"))
+            + "-"
+            + str(cur_monday.strftime("%d"))
+        )
+        start_member = start = (
+            str(last_monday.year)
+            + "-"
+            + str(last_monday.strftime("%m"))
+            + "-"
+            + str(last_monday.strftime("%d"))
+        )
     else:
         # 基準日＞本月1日
-        end = cur_time.strftime('%Y-%m-01')
+        end = cur_time.strftime("%Y-%m-01")
         # 前月1日
-        start = datetime.strftime(cur_time + relativedelta(months=-1), '%Y-%m-01')
-        start_member = datetime.strftime(cur_time + relativedelta(months=-6), '%Y-%m-01')
-        report_end = datetime.strftime(cur_time + relativedelta(months=-1), '%Y%m')
+        start = datetime.strftime(cur_time + relativedelta(months=-1), "%Y-%m-01")
+        start_member = datetime.strftime(
+            cur_time + relativedelta(months=-6), "%Y-%m-01"
+        )
+        report_end = datetime.strftime(cur_time + relativedelta(months=-1), "%Y%m")
 
     # CostExplorerからデータ取得
-    client = boto3.client('ce', region_name=REGION)
+    client = boto3.client("ce", region_name=REGION)
 
     # EKS全体料金
     response = client.get_cost_and_usage(
         TimePeriod={
-            'Start': start,
-            'End': end,
+            "Start": start,
+            "End": end,
         },
-        Granularity='DAILY',
-        Filter={
-            'Tags': {
-                'Key': 'IntendedUse',
-                'Values': ['eks-terrasium']
-            }
-        },
-        Metrics=['UnblendedCost'],
-        GroupBy=[{
-            'Type': 'DIMENSION',
-            'Key': 'SERVICE'
-        }]
+        Granularity="DAILY",
+        Filter={"Tags": {"Key": "IntendedUse", "Values": ["eks-terrasium"]}},
+        Metrics=["UnblendedCost"],
+        GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
     )
     response_context = response_format(response)
-    msg = START_LINE + "EKS全体料金" + "\n" \
-        + ",".join(str(n) for n in response_context["title"]) + "\n" \
-        + "\n".join(str(n) for n in response_context["output_list"]) \
+    msg = (
+        START_LINE
+        + "EKS全体料金"
+        + "\n"
+        + ",".join(str(n) for n in response_context["title"])
+        + "\n"
+        + "\n".join(str(n) for n in response_context["output_list"])
         + LINE
+    )
 
     # EMR全体料金
     response = client.get_cost_and_usage(
         TimePeriod={
-            'Start': start,
-            'End': end,
+            "Start": start,
+            "End": end,
         },
-        Granularity='DAILY',
-        Filter={
-            'Tags': {
-                'Key': 'IntendedUse',
-                'Values': ['EMR']
-            }
-        },
-        Metrics=['UnblendedCost'],
-        GroupBy=[{
-            'Type': 'DIMENSION',
-            'Key': 'SERVICE'
-        }]
+        Granularity="DAILY",
+        Filter={"Tags": {"Key": "IntendedUse", "Values": ["EMR"]}},
+        Metrics=["UnblendedCost"],
+        GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
     )
     response_context = response_format(response)
-    msg += "\n" + "EMR全体料金" + "\n" \
-        + ",".join(str(n) for n in response_context["title"]) + "\n" \
-        + "\n".join(str(n) for n in response_context["output_list"]) \
+    msg += (
+        "\n"
+        + "EMR全体料金"
+        + "\n"
+        + ",".join(str(n) for n in response_context["title"])
+        + "\n"
+        + "\n".join(str(n) for n in response_context["output_list"])
         + LINE
+    )
 
     # EMR料金（CA/MA/MS/DDUチーム）-サービス別料金
     response = client.get_cost_and_usage(
         TimePeriod={
-            'Start': start,
-            'End': end,
+            "Start": start,
+            "End": end,
         },
-        Granularity='DAILY',
+        Granularity="DAILY",
         Filter={
-            'And': [
-                {'Tags':
-                    {
-                        'Key': 'IntendedUse',
-                        'Values': ['EMR']
-                    }
-                 },
-                {'Tags':
-                    {
-                        'Key': 'Team',
-                        'Values': ['CA', 'MA', 'MS', 'DDU']
-                    }
-                 }
+            "And": [
+                {"Tags": {"Key": "IntendedUse", "Values": ["EMR"]}},
+                {"Tags": {"Key": "Team", "Values": ["CA", "MA", "MS", "DDU"]}},
             ]
         },
-        Metrics=['UnblendedCost'],
-        GroupBy=[{
-            'Type': 'DIMENSION',
-            'Key': 'SERVICE'
-        }]
+        Metrics=["UnblendedCost"],
+        GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
     )
     response_context = response_format(response)
-    msg += "\n" + "EMR料金（CA/MA/MS/DDUチーム）-サービス別料金" + "\n" \
-        + ",".join(str(n) for n in response_context["title"]) + "\n" \
-        + "\n".join(str(n) for n in response_context["output_list"]) \
+    msg += (
+        "\n"
+        + "EMR料金（CA/MA/MS/DDUチーム）-サービス別料金"
+        + "\n"
+        + ",".join(str(n) for n in response_context["title"])
+        + "\n"
+        + "\n".join(str(n) for n in response_context["output_list"])
         + LINE
+    )
 
     # EMR料金（CA/MA/MS/DDUチーム）-P番別料金
     response = client.get_cost_and_usage(
         TimePeriod={
-            'Start': start_member,
-            'End': end,
+            "Start": start_member,
+            "End": end,
         },
-        Granularity='MONTHLY',
+        Granularity="MONTHLY",
         Filter={
-            'And': [
-                {'Tags':
-                    {
-                        'Key': 'IntendedUse',
-                        'Values': ['EMR']
-                    }
-                 },
-                {'Tags':
-                    {
-                        'Key': 'Team',
-                        'Values': ['CA', 'MA', 'MS', 'DDU']
-                    }
-                 }
+            "And": [
+                {"Tags": {"Key": "IntendedUse", "Values": ["EMR"]}},
+                {"Tags": {"Key": "Team", "Values": ["CA", "MA", "MS", "DDU"]}},
             ]
         },
-        Metrics=['UnblendedCost'],
-        GroupBy=[{
-            'Type': 'TAG',
-            'Key': 'EmployeeNum'
-        }]
+        Metrics=["UnblendedCost"],
+        GroupBy=[{"Type": "TAG", "Key": "EmployeeNum"}],
     )
 
     response_context = response_format(response, "memberList", report_type)
-    msg += "\n" + "EMR料金（CA/MA/MS/DDUチーム）-P番別料金" + "\n" \
-        + ",".join(str(n) for n in response_context["title"]) + "\n" \
-        + "\n".join(str(n) for n in response_context["output_list"]) \
+    msg += (
+        "\n"
+        + "EMR料金（CA/MA/MS/DDUチーム）-P番別料金"
+        + "\n"
+        + ",".join(str(n) for n in response_context["title"])
+        + "\n"
+        + "\n".join(str(n) for n in response_context["output_list"])
         + LINE
+    )
 
     # EKS料金-P番別料金/dag-id別料金
 
@@ -289,22 +299,26 @@ def lambda_handler(event, context):
     batch_time = time.strptime(end + batch_time_start, "%Y-%m-%d %H:%M:%S")
     batch_timestamp_start = int(round(time.mktime(batch_time) * 1000))
     # バッチ予想終了時間（実行時間最大限1時間）
-    batch_timestamp_end = int(round(time.mktime(batch_time) * 1000) + BATCH_EXECUTE_PERIOD)
+    batch_timestamp_end = int(
+        round(time.mktime(batch_time) * 1000) + BATCH_EXECUTE_PERIOD
+    )
 
     # EKSクラスターリストの中から、対象クラスターを抽出
     clusters = []
     cluster_list = boto3.client("eks")
     cluster_list_res = cluster_list.list_clusters()
-    cluster_list_res['clusters'].sort(reverse=True)
+    cluster_list_res["clusters"].sort(reverse=True)
 
-    for val in cluster_list_res['clusters']:
-        if val.startswith(os.environ['ENV'] + "-eksanalysis") and val.endswith("-cluster"):
+    for val in cluster_list_res["clusters"]:
+        if val.startswith(os.environ["ENV"] + "-eksanalysis") and val.endswith(
+            "-cluster"
+        ):
             clusters.append(val)
 
     print(clusters)
 
     # CloudWatchLogsからCronJobログを取得
-    client_log = boto3.client('logs', region_name=REGION)
+    client_log = boto3.client("logs", region_name=REGION)
     results = []
 
     for log_name_list in clusters:
@@ -312,20 +326,20 @@ def lambda_handler(event, context):
             logGroupName=log_name_list,
             logStreamNamePrefix=LOG_STREAM_NAME_PREFIX,
             startTime=batch_timestamp_start,
-            endTime=batch_timestamp_end
+            endTime=batch_timestamp_end,
         )
-        results += response['events']
+        results += response["events"]
 
-        while 'nextToken' in response.keys():
-            currentToken = response['nextToken']
+        while "nextToken" in response.keys():
+            currentToken = response["nextToken"]
             response = client_log.filter_log_events(
                 logGroupName=log_name_list,
                 logStreamNamePrefix=LOG_STREAM_NAME_PREFIX,
                 startTime=batch_timestamp_start,
                 endTime=batch_timestamp_end,
-                nextToken=currentToken
+                nextToken=currentToken,
             )
-            results += response['events']
+            results += response["events"]
 
     print(results)
 
@@ -354,7 +368,7 @@ def lambda_handler(event, context):
         'eventId': '37627017528590970025944144491802726703533076385874968576'}
         """
 
-        kubecost.append(json.loads(dict_msg.get('message')).get('log'))
+        kubecost.append(json.loads(dict_msg.get("message")).get("log"))
 
     """
     kubecost example
@@ -384,11 +398,11 @@ def lambda_handler(event, context):
 
     # ログの出力は各行の先頭に"yyyy-mm-ddThh:mm:ss.sssssssssZ stdout F "の文字列がつくので、それを削除するパターンを作成
     # 小数点以下は1~9桁までで対応
-    pattern = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{1,9}Z stdout F '
+    pattern = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{1,9}Z stdout F "
     # 上記出力からテーブル形式の情報のみに整形
     split_kubecost = []
     for i in kubecost:
-        table_content = re.sub(pattern, '', i)
+        table_content = re.sub(pattern, "", i)
         split_kubecost.append(table_content)
     print(split_kubecost)
 
@@ -442,7 +456,11 @@ def lambda_handler(event, context):
 
     # 不要な行を削除。filter_wordsが含まれていない行を取得
     filter_words = ["CLUSTER", "__unallocated__", "SUMMED"]
-    remove_needless_line = [i for i in remove_separator_line if not any(filter_word in i for filter_word in filter_words)]
+    remove_needless_line = [
+        i
+        for i in remove_separator_line
+        if not any(filter_word in i for filter_word in filter_words)
+    ]
     print(remove_needless_line)
 
     """
@@ -461,7 +479,9 @@ def lambda_handler(event, context):
     msg_list = ""
     for i in remove_needless_line:
         split = i.split("|")
-        msg_list += convert_to_upper_case(split[2].strip()) + "," + split[3].strip() + "\n"
+        msg_list += (
+            convert_to_upper_case(split[2].strip()) + "," + split[3].strip() + "\n"
+        )
     print(msg_list)
 
     """
@@ -486,4 +506,4 @@ def lambda_handler(event, context):
     # メール送信
     send_mail(subject, msg)
 
-    return 'sendmail-success'
+    return "sendmail-success"

@@ -10,17 +10,17 @@ def get_origin_profile_names(args):
     アクセス先環境プロファイル名のリストを作成する
     """
     if args[1] == "dev":
-        with open('./conf/dev_accountid.txt', 'r') as file:
+        with open("./conf/dev_accountid.txt", "r") as file:
             lines = file.readlines()
 
-        profile_list = [line.split(',')[0] for line in lines]
+        profile_list = [line.split(",")[0] for line in lines]
 
         return profile_list
     elif args[1] == "prd":
-        with open('./conf/prd_accountid.txt', 'r') as file:
+        with open("./conf/prd_accountid.txt", "r") as file:
             lines = file.readlines()
 
-        profile_list = [line.split(',')[0] for line in lines]
+        profile_list = [line.split(",")[0] for line in lines]
 
         return profile_list
     else:
@@ -29,13 +29,13 @@ def get_origin_profile_names(args):
 
 
 def get_origin_profile_name(profile_name):
-    origin_profile = profile_name.split('-')[1]
+    origin_profile = profile_name.split("-")[1]
 
     return origin_profile
 
 
 def print_profile_name(profile_name):
-    print('=== Profile {} ==='.format(profile_name))
+    print("=== Profile {} ===".format(profile_name))
 
     return
 

@@ -4,7 +4,7 @@ from botocore.exceptions import ClientError
 
 
 def get_policy():
-    policy_template = '''
+    policy_template = """
     {
         "Version": "2008-10-17",
         "Statement": [
@@ -51,12 +51,11 @@ def get_policy():
           }
         ]
     }
-    '''
-    return policy_template.replace('{account_id}', os.environ['ACCOUNT_ID'])
+    """
+    return policy_template.replace("{account_id}", os.environ["ACCOUNT_ID"])
 
 
 def lambda_handler(event, context):
-
     if "unit_name" not in event.keys() or event["unit_name"].strip() == "":
         raise ValueError("`unit_name` is not specified.")
 
@@ -72,7 +71,7 @@ def lambda_handler(event, context):
     unit_name = event["unit_name"]
     p_num = event["p_num"]
     usage = event["usage"]
-    image_name = event['image_name']
+    image_name = event["image_name"]
     repository_name = "terrasium-user-images" + "/" + usage + "/" + image_name
 
     client = boto3.client("ecr")
@@ -81,37 +80,28 @@ def lambda_handler(event, context):
         response = client.create_repository(
             repositoryName=repository_name,
             tags=[
+                {"Key": "Project", "Value": os.environ["ENV"] + "-eksanalysis"},
                 {
-                    'Key': 'Project',
-                    'Value': os.environ['ENV'] + '-eksanalysis'
+                    "Key": "Name",
+                    "Value": os.environ["ENV"]
+                    + "-eksanalysis-terrasium-ecr-repository",
                 },
-                {
-                    'Key': 'Name',
-                    'Value': os.environ['ENV'] + '-eksanalysis-terrasium-ecr-repository'
-                },
-                {
-                    'Key': 'Team',
-                    'Value': unit_name
-                },
-                {
-                    'Key': 'EmployeeNum',
-                    'Value': p_num
-                },
-                {
-                    'Key': 'Usage',
-                    'Value': 'terrasium-eks'
-                }
+                {"Key": "Team", "Value": unit_name},
+                {"Key": "EmployeeNum", "Value": p_num},
+                {"Key": "Usage", "Value": "terrasium-eks"},
             ],
-            imageTagMutability="IMMUTABLE"
+            imageTagMutability="IMMUTABLE",
         )
 
         client.set_repository_policy(
-            repositoryName=repository_name,
-            policyText=get_policy(),
-            force=True
+            repositoryName=repository_name, policyText=get_policy(), force=True
         )
 
-        response_txt = "ECR repository is created. (path:" + response["repository"]["repositoryUri"] + ")"
+        response_txt = (
+            "ECR repository is created. (path:"
+            + response["repository"]["repositoryUri"]
+            + ")"
+        )
 
         return response_txt
 
