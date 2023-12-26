@@ -1,0 +1,5 @@
+[tool.ruff]
+include = ["*.py"]
+
+[tool.ruff.lint]
+select = ["F4"]
